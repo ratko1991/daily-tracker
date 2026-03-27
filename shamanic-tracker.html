@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shamanic Strategy Tracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f5f4f0;
+    color: #1a1a1a;
+    min-height: 100vh;
+    padding: 1.5rem 1rem 3rem;
+  }
+  h1 {
+    font-size: 18px; font-weight: 500; margin-bottom: 1.5rem;
+    color: #1a1a1a; letter-spacing: -0.01em;
+  }
+  .container { max-width: 620px; margin: 0 auto; }
+  .day-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .day-tab {
+    padding: 6px 14px; border-radius: 8px;
+    border: 0.5px solid #ccc;
+    background: #fff;
+    color: #666;
+    font-size: 13px; cursor: pointer;
+    position: relative; transition: all 0.15s;
+    font-family: inherit;
+  }
+  .day-tab.active {
+    background: #e8e7e3; color: #1a1a1a;
+    border-color: #999; font-weight: 500;
+  }
+  .day-tab::after {
+    font-size: 9px; position: absolute;
+    top: -6px; right: -4px;
+    padding: 1px 5px; border-radius: 4px; white-space: nowrap;
+  }
+  .day-tab.office::after { content: "office"; background: #ddeeff; color: #1a4a7a; }
+  .day-tab.wfh::after    { content: "WFH";    background: #d0f0e4; color: #0a5a3a; }
+  .day-tab.weekend::after{ content: "rest";   background: #fdefd0; color: #6a3a00; }
+  .date-label {
+    font-size: 13px; color: #888; margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .prog-wrap {
+    flex: 1; background: #ddd; border-radius: 99px; height: 5px; overflow: hidden;
+  }
+  .prog-fill { height: 100%; border-radius: 99px; background: #1a9e72; transition: width 0.3s; }
+  .prog-pct { font-size: 12px; color: #888; min-width: 34px; text-align: right; }
+  .blocks { display: flex; flex-direction: column; gap: 7px; }
+  .block {
+    display: flex; align-items: center; gap: 11px;
+    border-radius: 12px; border: 0.5px solid #ddd;
+    background: #fff; padding: 10px 13px;
+    cursor: pointer; transition: background 0.12s, border-color 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .block:hover { border-color: #bbb; }
+  .block.done { background: #f0efeb; }
+  .block.skipped { opacity: 0.4; }
+  .block.flex { border-style: dashed; }
+  .time-col { font-size: 11px; color: #aaa; min-width: 78px; line-height: 1.3; }
+  .circle {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 1.5px solid #ccc; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .block.done .circle { background: #1a9e72; border-color: #1a9e72; }
+  .checkmark { display: none; }
+  .block.done .checkmark { display: block; }
+  .task-name { font-size: 14px; color: #1a1a1a; flex: 1; line-height: 1.3; }
+  .block.done .task-name { color: #bbb; text-decoration: line-through; }
+  .tags { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tag { font-size: 10px; padding: 2px 7px; border-radius: 99px; white-space: nowrap; }
+  .tag-mind  { background: #eeedfe; color: #3c3489; }
+  .tag-body  { background: #e0f5ee; color: #085041; }
+  .tag-lang  { background: #e5f1fb; color: #0c447c; }
+  .tag-rest  { background: #faeeda; color: #633806; }
+  .tag-work  { background: #f0efe8; color: #444441; }
+  .tag-art   { background: #fbeaf0; color: #72243e; }
+  .tag-sleep { background: #faece7; color: #712b13; }
+  .skip-btn {
+    font-size: 11px; color: #bbb; border: none; background: none;
+    cursor: pointer; padding: 3px 6px; border-radius: 6px; font-family: inherit;
+  }
+  .skip-btn:hover { background: #eee; color: #888; }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: #1a1a18; color: #e8e7e3; }
+    h1 { color: #e8e7e3; }
+    .day-tab { background: #2a2a28; border-color: #444; color: #999; }
+    .day-tab.active { background: #3a3a38; color: #e8e7e3; border-color: #666; }
+    .day-tab.office::after { background: #0c3060; color: #90c0f0; }
+    .day-tab.wfh::after    { background: #063828; color: #70d0a0; }
+    .day-tab.weekend::after{ background: #3a2000; color: #f0b050; }
+    .block { background: #242422; border-color: #3a3a38; }
+    .block:hover { border-color: #555; }
+    .block.done { background: #2e2e2c; }
+    .prog-wrap { background: #3a3a38; }
+    .prog-fill { background: #0f6e56; }
+    .task-name { color: #e8e7e3; }
+    .block.done .task-name { color: #555; }
+    .block.done .circle { background: #0f6e56; border-color: #0f6e56; }
+    .skip-btn:hover { background: #333; color: #aaa; }
+    .tag-mind  { background: #26215c; color: #cecbf6; }
+    .tag-body  { background: #04342c; color: #9fe1cb; }
+    .tag-lang  { background: #042c53; color: #b5d4f4; }
+    .tag-rest  { background: #412402; color: #fac775; }
+    .tag-work  { background: #2c2c2a; color: #d3d1c7; }
+    .tag-art   { background: #4b1528; color: #f4c0d1; }
+    .tag-sleep { background: #4a1b0c; color: #f5c4b3; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Shamanic Strategy Tracker</h1>
+  <div class="day-tabs" id="tabs"></div>
+  <div class="date-label">
+    <span id="date-str"></span>
+    <div class="prog-wrap"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    <span class="prog-pct" id="prog-pct">0%</span>
+  </div>
+  <div class="blocks" id="blocks"></div>
+</div>
+
+<script>
+const schedule = {
+  Monday: {
+    type: "office",
+    tasks: [
+      { time: "Sleep",       label: "Deep yin sleep",             tags: ["sleep"] },
+      { time: "08:30–09:00", label: "Duolingo (commute)",         tags: ["lang"]  },
+      { time: "09:00–17:00", label: "The job + pauses for logic", tags: ["work"]  },
+      { time: "17:00–18:00", label: "Russian (commute)",          tags: ["lang"]  },
+      { time: "18:00–19:30", label: "Exercise — push",            tags: ["body"]  },
+      { time: "19:30–20:15", label: "Shower & nutrition",         tags: ["body"]  },
+      { time: "20:15–21:00", label: "Psychology",                 tags: ["mind"]  },
+      { time: "21:00–22:00", label: "Cinema cave",                tags: ["rest"]  },
+      { time: "22:00+",      label: "The descent",                tags: ["sleep"] },
+    ]
+  },
+  Tuesday: {
+    type: "office",
+    tasks: [
+      { time: "Sleep",       label: "Deep yin sleep",             tags: ["sleep"] },
+      { time: "08:30–09:00", label: "Duolingo (commute)",         tags: ["lang"]  },
+      { time: "09:00–17:00", label: "The job + pauses for logic", tags: ["work"]  },
+      { time: "17:00–18:00", label: "Russian (commute)",          tags: ["lang"]  },
+      { time: "18:00–19:30", label: "Python & AI",                tags: ["mind"]  },
+      { time: "19:30–20:15", label: "Shower & nutrition",         tags: ["body"]  },
+      { time: "20:15–21:00", label: "Russian grammar",            tags: ["lang"]  },
+      { time: "21:00–22:00", label: "Cinema cave",                tags: ["rest"]  },
+      { time: "22:00+",      label: "The descent",                tags: ["sleep"] },
+    ]
+  },
+  Wednesday: {
+    type: "wfh",
+    tasks: [
+      { time: "Sleep",       label: "Deep yin sleep",                tags: ["sleep"] },
+      { time: "09:00–17:00", label: "The job + math (digital monk)", tags: ["work","mind"] },
+      { time: "whenever",    label: "Duolingo",                      tags: ["lang"], flex: true },
+      { time: "19:30–20:15", label: "Shower & nutrition",            tags: ["body"]  },
+      { time: "20:15–21:00", label: "Psychology",                    tags: ["mind"]  },
+      { time: "21:00–22:00", label: "Cinema cave",                   tags: ["rest"]  },
+      { time: "22:00+",      label: "The descent",                   tags: ["sleep"] },
+    ]
+  },
+  Thursday: {
+    type: "office",
+    tasks: [
+      { time: "Sleep",       label: "Deep yin sleep",             tags: ["sleep"] },
+      { time: "08:30–09:00", label: "Duolingo (commute)",         tags: ["lang"]  },
+      { time: "09:00–17:00", label: "The job + pauses for logic", tags: ["work"]  },
+      { time: "17:00–18:00", label: "Russian (commute)",          tags: ["lang"]  },
+      { time: "18:00–19:30", label: "Python & AI",                tags: ["mind"]  },
+      { time: "19:30–20:15", label: "Shower & nutrition",         tags: ["body"]  },
+      { time: "20:15–21:00", label: "Math review",                tags: ["mind"]  },
+      { time: "21:00–22:00", label: "Cinema cave",                tags: ["rest"]  },
+      { time: "22:00+",      label: "The descent",                tags: ["sleep"] },
+    ]
+  },
+  Friday: {
+    type: "wfh",
+    tasks: [
+      { time: "Sleep",       label: "Deep yin sleep",                tags: ["sleep"] },
+      { time: "09:00–17:00", label: "The job + math (digital monk)", tags: ["work","mind"] },
+      { time: "whenever",    label: "Duolingo",                      tags: ["lang"], flex: true },
+      { time: "18:00–19:30", label: "Exercise — legs + deadlifts",   tags: ["body"]  },
+      { time: "19:30–20:15", label: "Shower & nutrition",            tags: ["body"]  },
+      { time: "20:15–21:00", label: "Psychology / flex",             tags: ["mind"]  },
+      { time: "21:00–22:00", label: "Cinema cave",                   tags: ["rest"]  },
+      { time: "22:00+",      label: "The descent",                   tags: ["sleep"] },
+    ]
+  },
+  Saturday: {
+    type: "weekend",
+    tasks: [
+      { time: "Morning",     label: "Rest / ancestral time",       tags: ["rest"]  },
+      { time: "whenever",    label: "Duolingo",                    tags: ["lang"], flex: true },
+      { time: "17:00–18:00", label: "Python & AI",                 tags: ["mind"]  },
+      { time: "18:00–19:30", label: "Calisthenics — 300 pullups",  tags: ["body"]  },
+      { time: "19:30–20:15", label: "Digital art",                 tags: ["art"]   },
+      { time: "20:15–21:00", label: "Psychology",                  tags: ["mind"]  },
+      { time: "21:00–22:00", label: "Cinema cave",                 tags: ["rest"]  },
+      { time: "22:00+",      label: "The descent",                 tags: ["sleep"] },
+    ]
+  },
+  Sunday: {
+    type: "weekend",
+    tasks: [
+      { time: "All day",     label: "Rest / ancestral time",       tags: ["rest"]  },
+      { time: "whenever",    label: "Duolingo",                    tags: ["lang"], flex: true },
+      { time: "Free",        label: "Digital art",                 tags: ["art"]   },
+      { time: "Free",        label: "Psychology",                  tags: ["mind"]  },
+      { time: "21:00–22:00", label: "Cinema cave",                 tags: ["rest"]  },
+      { time: "22:00+",      label: "The descent",                 tags: ["sleep"] },
+    ]
+  }
+};
+
+const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const today = new Date();
+const todayIdx = (today.getDay() + 6) % 7;
+let activeDay = days[todayIdx];
+const state = {};
+days.forEach(d => { state[d] = {}; });
+
+function saveState() {
+  try { localStorage.setItem('shamanic_tracker', JSON.stringify(state)); } catch(e) {}
+}
+function loadState() {
+  try {
+    const s = localStorage.getItem('shamanic_tracker');
+    if (s) Object.assign(state, JSON.parse(s));
+  } catch(e) {}
+}
+loadState();
+
+function renderTabs() {
+  const el = document.getElementById('tabs');
+  el.innerHTML = '';
+  days.forEach(d => {
+    const btn = document.createElement('button');
+    btn.className = 'day-tab ' + schedule[d].type + (d === activeDay ? ' active' : '');
+    btn.textContent = d.slice(0,3);
+    btn.onclick = () => { activeDay = d; render(); };
+    el.appendChild(btn);
+  });
+}
+
+function renderBlocks() {
+  const el = document.getElementById('blocks');
+  el.innerHTML = '';
+  const tasks = schedule[activeDay].tasks;
+  const ds = state[activeDay];
+  let done = 0;
+
+  tasks.forEach((t, i) => {
+    const isDone = ds[i] === 'done';
+    const isSkip = ds[i] === 'skip';
+    if (isDone) done++;
+
+    const tagsHtml = t.tags.map(tg => `<span class="tag tag-${tg}">${tg}</span>`).join('');
+    const row = document.createElement('div');
+    row.className = 'block' + (isDone ? ' done' : '') + (isSkip ? ' skipped' : '') + (t.flex ? ' flex' : '');
+    row.innerHTML = `
+      <div class="time-col">${t.time}</div>
+      <div class="circle">
+        <svg class="checkmark" width="11" height="11" viewBox="0 0 11 11">
+          <polyline points="1.5,6 4.5,9 9.5,2" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="task-name">${t.label}</div>
+      <div class="tags">${tagsHtml}</div>
+      <button class="skip-btn">${isSkip ? 'undo' : '—'}</button>
+    `;
+    row.querySelector('.circle').addEventListener('click', e => {
+      e.stopPropagation(); ds[i] = isDone ? undefined : 'done'; saveState(); render();
+    });
+    row.querySelector('.skip-btn').addEventListener('click', e => {
+      e.stopPropagation(); ds[i] = isSkip ? undefined : 'skip'; saveState(); render();
+    });
+    row.addEventListener('click', () => { ds[i] = isDone ? undefined : 'done'; saveState(); render(); });
+    el.appendChild(row);
+  });
+
+  const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-pct').textContent = pct + '%';
+}
+
+function renderDate() {
+  const el = document.getElementById('date-str');
+  el.textContent = activeDay === days[todayIdx]
+    ? 'Today · ' + today.toLocaleDateString('en-GB', { weekday: 'long', month: 'long', day: 'numeric' })
+    : activeDay;
+}
+
+function render() { renderTabs(); renderDate(); renderBlocks(); }
+render();
+</script>
+</body>
+</html>
